@@ -1,6 +1,6 @@
 # Smile Score App
 
-A web application where users register, upload a photo, and receive a smile score — built as a take-home assessment for LEWIS.
+A web application where users register, upload a photo, and receive a smile score.
 
 **[Live demo →](https://smile-score-app-beta.vercel.app/)**
 

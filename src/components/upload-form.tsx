@@ -4,6 +4,11 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { formatSmileScore } from '@/lib/smile-score'
+import {
+  mapDatabaseError,
+  mapStorageError,
+  validateImageFile,
+} from '@/lib/upload-validation'
 import type { Database } from '@/types/database.types'
 
 type SmileResult = Database['public']['Tables']['smile_results']['Row']
@@ -29,7 +34,9 @@ function formatResultTimestamp(iso: string | null): string {
 // Module-level flag: models load once per browser session, not per render
 let modelsLoaded = false
 
-async function detectSmileScore(imgElement: HTMLImageElement): Promise<number> {
+async function detectSmileScore(
+  imgElement: HTMLImageElement
+): Promise<number | null> {
   // Dynamic import: face-api uses browser APIs, can't run server-side
   const faceapi = await import('@vladmandic/face-api')
 
@@ -41,12 +48,12 @@ async function detectSmileScore(imgElement: HTMLImageElement): Promise<number> {
     modelsLoaded = true
   }
 
-  const result = await faceapi
+  const detection = await faceapi
     .detectSingleFace(imgElement, new faceapi.TinyFaceDetectorOptions())
     .withFaceExpressions()
 
-  // Returns 0 if no face detected rather than throwing
-  return result?.expressions.happy ?? 0
+  if (!detection) return null
+  return detection.expressions.happy
 }
 
 interface Props {
@@ -70,6 +77,18 @@ export default function UploadForm({ initialResults, userId }: Props) {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0]
     if (!selected) return
+
+    const validationError = validateImageFile(selected)
+    if (validationError) {
+      setFile(null)
+      setPreview(null)
+      setLastScore(null)
+      setErrorMsg(validationError)
+      setStatus('error')
+      e.target.value = ''
+      return
+    }
+
     setFile(selected)
     setPreview(URL.createObjectURL(selected))
     setStatus('idle')
@@ -79,19 +98,34 @@ export default function UploadForm({ initialResults, userId }: Props) {
 
   async function handleAnalyse() {
     if (!file || !imgRef.current) return
+
+    const validationError = validateImageFile(file)
+    if (validationError) {
+      setErrorMsg(validationError)
+      setStatus('error')
+      return
+    }
+
     setErrorMsg(null)
 
     try {
       setStatus('analysing')
       // Wait for image to be fully decoded before passing to TensorFlow
-        await new Promise<void>((resolve) => {
-            if (imgRef.current!.complete && imgRef.current!.naturalWidth > 0) {
-            resolve()
-            } else {
-            imgRef.current!.onload = () => resolve()
-            }
-        })
+      await new Promise<void>((resolve) => {
+        if (imgRef.current!.complete && imgRef.current!.naturalWidth > 0) {
+          resolve()
+        } else {
+          imgRef.current!.onload = () => resolve()
+        }
+      })
       const score = await detectSmileScore(imgRef.current)
+      if (score === null) {
+        setErrorMsg(
+          'No face detected. Please try a photo with a clear, visible face.'
+        )
+        setStatus('error')
+        return
+      }
       setLastScore(score)
 
       setStatus('saving')
@@ -104,7 +138,11 @@ export default function UploadForm({ initialResults, userId }: Props) {
         .from('smile-images')
         .upload(filePath, file)
 
-      if (uploadError) throw uploadError
+      if (uploadError) {
+        setErrorMsg(mapStorageError(uploadError.message))
+        setStatus('error')
+        return
+      }
 
       const { data: newResult, error: insertError } = await supabase
         .from('smile_results')
@@ -116,15 +154,19 @@ export default function UploadForm({ initialResults, userId }: Props) {
         .select()
         .single()
 
-      if (insertError) throw insertError
+      if (insertError) {
+        setErrorMsg(mapDatabaseError())
+        setStatus('error')
+        return
+      }
 
       setResults(prev => [newResult, ...prev])
       setStatus('done')
 
       // Invalidates the Server Component cache so a full refresh is in sync
       router.refresh()
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong')
+    } catch {
+      setErrorMsg('Something went wrong. Please try again.')
       setStatus('error')
     }
   }
@@ -149,7 +191,7 @@ export default function UploadForm({ initialResults, userId }: Props) {
             <input
               id="smile-photo"
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               onChange={handleFileChange}
               disabled={isLoading}
               className="input-file"
@@ -191,6 +233,21 @@ export default function UploadForm({ initialResults, userId }: Props) {
             {!isLoading && 'Analyse smile'}
           </button>
         )}
+
+        <details className="rounded-lg border border-border bg-surface-muted/70 px-4 py-3">
+          <summary className="cursor-pointer text-sm font-medium text-foreground">
+            How it works
+          </summary>
+          <ul className="muted mt-3 space-y-2">
+            <li>📷 One face per image — the app scores the most prominent face detected.</li>
+            <li>🔒 Images are stored privately and are only visible to you.</li>
+            <li>
+              ⚡ Face detection runs on your device before upload — your photo never
+              leaves your browser unprocessed.
+            </li>
+            <li>😊 Scores of 40% and above count as a smile.</li>
+          </ul>
+        </details>
       </section>
 
       {results.length > 0 && (

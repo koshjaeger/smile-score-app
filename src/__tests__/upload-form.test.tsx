@@ -1,5 +1,6 @@
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
+import * as faceapi from '@vladmandic/face-api'
 
 // Adjust if your component uses a named export instead
 import UploadForm from '@/components/upload-form'
@@ -104,5 +105,78 @@ describe('UploadForm', () => {
     expect(
       screen.queryByRole('button', { name: /analyse smile/i })
     ).not.toBeInTheDocument()
+  })
+
+  it('shows a How it works section', () => {
+    render(<UploadForm initialResults={[]} userId="mock-user-id" />)
+
+    expect(screen.getByText(/how it works/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/one face per image/i)
+    ).toBeInTheDocument()
+  })
+
+  it('rejects unsupported file types before analyse', () => {
+    render(<UploadForm initialResults={[]} userId="mock-user-id" />)
+
+    const fileInput = document.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement
+    fireEvent.change(fileInput, {
+      target: {
+        files: [new File(['x'], 'photo.gif', { type: 'image/gif' })],
+      },
+    })
+
+    expect(
+      screen.getByText('Please upload a JPEG, PNG or WebP image.')
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /analyse smile/i })
+    ).not.toBeInTheDocument()
+  })
+
+  it('rejects files over 5MB before analyse', () => {
+    render(<UploadForm initialResults={[]} userId="mock-user-id" />)
+
+    const oversized = new File(['x'], 'smile.jpg', { type: 'image/jpeg' })
+    Object.defineProperty(oversized, 'size', { value: 5 * 1024 * 1024 + 1 })
+
+    const fileInput = document.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement
+    fireEvent.change(fileInput, {
+      target: { files: [oversized] },
+    })
+
+    expect(screen.getByText('Image must be under 5MB.')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /analyse smile/i })
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows a helpful error when no face is detected', async () => {
+    Object.defineProperty(HTMLImageElement.prototype, 'complete', {
+      configurable: true,
+      get: () => true,
+    })
+    Object.defineProperty(HTMLImageElement.prototype, 'naturalWidth', {
+      configurable: true,
+      get: () => 100,
+    })
+    ;(faceapi.detectSingleFace as jest.Mock).mockReturnValueOnce({
+      withFaceExpressions: jest.fn().mockResolvedValue(null),
+    })
+
+    render(<UploadForm initialResults={[]} userId="mock-user-id" />)
+    selectImageFile()
+    fireEvent.click(screen.getByRole('button', { name: /analyse smile/i }))
+
+    expect(
+      await screen.findByText(
+        'No face detected. Please try a photo with a clear, visible face.'
+      )
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/not smiling/i)).not.toBeInTheDocument()
   })
 })
