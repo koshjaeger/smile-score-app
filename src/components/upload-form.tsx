@@ -8,6 +8,24 @@ import type { Database } from '@/types/database.types'
 
 type SmileResult = Database['public']['Tables']['smile_results']['Row']
 
+/** Paths are stored as `{userId}/{timestamp}-{originalFilename}` */
+function getDisplayFilename(imagePath: string): string {
+  const basename = imagePath.split('/').pop() ?? imagePath
+  return basename.replace(/^\d+-/, '') || basename
+}
+
+function formatResultTimestamp(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
 // Module-level flag: models load once per browser session, not per render
 let modelsLoaded = false
 
@@ -115,33 +133,44 @@ export default function UploadForm({ initialResults, userId }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Upload card */}
-      <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-        <h2 className="text-lg font-medium text-gray-900">Upload a photo</h2>
+      <section className="card card-pad space-y-4">
+        <div>
+          <h2 className="heading-section">Upload a photo</h2>
+          <p className="muted mt-1">
+            Choose a clear face photo, then analyse your smile.
+          </p>
+        </div>
 
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          disabled={isLoading}
-          className="block w-full text-sm text-gray-600
-            file:mr-4 file:py-2 file:px-4 file:rounded-lg
-            file:border-0 file:bg-blue-50 file:text-blue-700
-            file:font-medium hover:file:bg-blue-100"
-        />
+        <div className="card-section space-y-3">
+          <div>
+            <label htmlFor="smile-photo" className="label">
+              Photo
+            </label>
+            <input
+              id="smile-photo"
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              disabled={isLoading}
+              className="input-file"
+            />
+          </div>
 
-        {preview && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            ref={imgRef}
-            src={preview}
-            alt="Selected photo preview"
-            className="w-full max-h-64 object-contain rounded-lg border border-gray-100"
-          />
-        )}
+          {preview && (
+            <div className="media-well">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                ref={imgRef}
+                src={preview}
+                alt="Selected photo preview"
+                className="mx-auto max-h-64 w-full rounded-md object-contain"
+              />
+            </div>
+          )}
+        </div>
 
         {status === 'done' && lastScore !== null && (
-          <div className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800">
+          <div className="alert-success">
             {(() => {
               const { percentage, label } = formatSmileScore(lastScore)
               return `${label} — ${percentage}% smile score`
@@ -149,59 +178,53 @@ export default function UploadForm({ initialResults, userId }: Props) {
           </div>
         )}
 
-        {errorMsg && (
-          <p className="text-sm text-red-600">{errorMsg}</p>
-        )}
+        {errorMsg && <p className="alert-error">{errorMsg}</p>}
 
         {file && (
           <button
             onClick={handleAnalyse}
             disabled={isLoading}
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg
-              text-sm font-medium hover:bg-blue-700
-              disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary"
           >
             {status === 'analysing' && 'Analysing…'}
             {status === 'saving' && 'Saving…'}
             {!isLoading && 'Analyse smile'}
           </button>
         )}
-      </div>
+      </section>
 
-      {/* Results history */}
       {results.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">
-            Past results
-          </h2>
-          <ul className="divide-y divide-gray-100">
+        <section className="card card-pad">
+          <h2 className="heading-section mb-4">Past results</h2>
+          <ul className="list-divider rounded-lg border border-border bg-surface-muted/40 px-3 sm:px-4">
             {results.map(result => {
               const { percentage, label } = formatSmileScore(
                 Number(result.smile_score)
               )
+              const filename = getDisplayFilename(result.image_path)
               return (
                 <li
                   key={result.id}
-                  className="flex items-center justify-between py-3"
+                  className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)_minmax(0,auto)] items-center gap-3 py-3"
                 >
-                  <div>
-                    <span className="font-medium text-gray-900">{label}</span>
-                    <span className="ml-2 text-sm text-gray-500">
-                      {percentage}%
-                    </span>
+                  <div className="shrink-0">
+                    <span className="font-medium text-foreground">{label}</span>
+                    <span className="list-value">{percentage}%</span>
                   </div>
-                  <span className="text-xs text-gray-400">
-                  {result.created_at ? new Date(result.created_at).toLocaleDateString('en-GB', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                    }) : '—'}
-                  </span>
+                  <p className="truncate-cell text-sm text-gray-600 dark:text-zinc-400" title={filename}>
+                    {filename}
+                  </p>
+                  <time
+                    className="list-meta shrink-0 whitespace-nowrap text-right"
+                    dateTime={result.created_at ?? undefined}
+                  >
+                    {formatResultTimestamp(result.created_at)}
+                  </time>
                 </li>
               )
             })}
           </ul>
-        </div>
+        </section>
       )}
     </div>
   )

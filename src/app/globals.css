@@ -1,26 +1,193 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3f4f6; /* gray-100 */
+  --foreground: #111827; /* gray-900 */
+  --surface: #ffffff;
+  --surface-muted: #f9fafb; /* gray-50 */
+  --border: #e5e7eb; /* gray-200 */
+  --ring-offset: #f3f4f6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #09090b; /* zinc-950 */
+    --foreground: #fafafa; /* zinc-50 */
+    --surface: #18181b; /* zinc-900 */
+    --surface-muted: #27272a; /* zinc-800 */
+    --border: #3f3f46; /* zinc-700 */
+    --ring-offset: #09090b;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer components {
+  .page-shell {
+    @apply min-h-screen bg-background
+      bg-[radial-gradient(ellipse_at_top,_rgba(59,130,246,0.08),_transparent_55%)]
+      dark:bg-[radial-gradient(ellipse_at_top,_rgba(59,130,246,0.12),_transparent_50%)];
+  }
+
+  .page-center {
+    @apply min-h-screen flex items-center justify-center bg-background px-4 py-10
+      bg-[radial-gradient(ellipse_at_top,_rgba(59,130,246,0.08),_transparent_55%)]
+      dark:bg-[radial-gradient(ellipse_at_top,_rgba(59,130,246,0.12),_transparent_50%)];
+  }
+
+  .page-container {
+    @apply mx-auto w-full max-w-2xl px-4 py-8 sm:py-10;
+  }
+
+  .app-frame {
+    @apply rounded-2xl border border-border bg-surface/80 shadow-sm
+      backdrop-blur-sm ring-1 ring-black/5
+      dark:bg-surface/90 dark:ring-white/10;
+  }
+
+  .app-header {
+    @apply flex items-start justify-between gap-4 border-b border-border
+      px-5 py-5 sm:px-6 sm:py-6;
+  }
+
+  .app-body {
+    @apply space-y-6 p-5 sm:p-6;
+  }
+
+  .auth-shell {
+    @apply w-full max-w-md;
+  }
+
+  .auth-brand {
+    @apply mb-6 text-center;
+  }
+
+  .card {
+    @apply rounded-xl border border-border bg-surface shadow-sm
+      ring-1 ring-black/5 dark:ring-white/10;
+  }
+
+  .card-pad {
+    @apply p-5 sm:p-6;
+  }
+
+  .card-section {
+    @apply rounded-lg border border-border bg-surface-muted/70 p-4;
+  }
+
+  .media-well {
+    @apply overflow-hidden rounded-lg border border-border bg-surface-muted
+      p-2 sm:p-3;
+  }
+
+  .heading-page {
+    @apply text-2xl font-semibold tracking-tight text-foreground;
+  }
+
+  .heading-section {
+    @apply text-lg font-medium text-foreground;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-gray-700 dark:text-zinc-300;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-border bg-surface px-3 py-2.5
+      text-sm text-foreground shadow-sm
+      placeholder:text-gray-400 dark:placeholder:text-zinc-500
+      focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .input-file {
+    @apply block w-full text-sm text-gray-600 dark:text-zinc-400
+      file:mr-4 file:cursor-pointer file:rounded-lg file:border-0
+      file:bg-blue-50 file:px-4 file:py-2 file:font-medium file:text-blue-700
+      hover:file:bg-blue-100
+      dark:file:bg-blue-950 dark:file:text-blue-300 dark:hover:file:bg-blue-900
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium
+      text-white shadow-sm transition-colors
+      hover:bg-blue-700
+      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+      focus:ring-offset-[var(--ring-offset)]
+      disabled:cursor-not-allowed disabled:opacity-50
+      dark:bg-blue-500 dark:hover:bg-blue-400;
+  }
+
+  .btn-ghost {
+    @apply rounded-md px-2.5 py-1.5 text-sm text-gray-500 transition-colors
+      hover:bg-surface-muted hover:text-gray-800
+      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+      focus:ring-offset-[var(--ring-offset)]
+      dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border border-border
+      bg-surface px-3.5 py-2 text-sm font-medium text-foreground shadow-sm
+      transition-colors
+      hover:bg-surface-muted
+      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+      focus:ring-offset-[var(--ring-offset)];
+  }
+
+  .truncate-cell {
+    @apply min-w-0 truncate;
+  }
+
+  .link {
+    @apply font-medium text-blue-600 hover:text-blue-700 hover:underline
+      dark:text-blue-400 dark:hover:text-blue-300;
+  }
+
+  .muted {
+    @apply text-sm text-gray-600 dark:text-zinc-400;
+  }
+
+  .error-text {
+    @apply text-sm text-red-600 dark:text-red-400;
+  }
+
+  .alert-success {
+    @apply rounded-lg border border-green-200 bg-green-50 px-4 py-3
+      text-sm text-green-800
+      dark:border-green-900 dark:bg-green-950/60 dark:text-green-300;
+  }
+
+  .alert-error {
+    @apply rounded-lg border border-red-200 bg-red-50 px-4 py-3
+      text-sm text-red-700
+      dark:border-red-900 dark:bg-red-950/60 dark:text-red-300;
+  }
+
+  .list-divider {
+    @apply divide-y divide-border;
+  }
+
+  .list-meta {
+    @apply text-xs text-gray-400 dark:text-zinc-500;
+  }
+
+  .list-value {
+    @apply ml-2 text-sm text-gray-500 dark:text-zinc-400;
+  }
 }
