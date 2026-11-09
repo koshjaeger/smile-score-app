@@ -2,7 +2,7 @@
 
 A web application where users register, upload a photo, and receive a smile score.
 
-**[Live demo →](https://smile-score-app-beta.vercel.app/)**
+**[Live demo →](https://smile-score-app-inky.vercel.app/)**
 
 ---
 
