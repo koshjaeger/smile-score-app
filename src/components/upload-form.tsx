@@ -92,7 +92,7 @@ export default function UploadForm({ initialResults, userId }: Props) {
         .from('smile_results')
         .insert({
           user_id: userId,
-          image_url: filePath,
+          image_path: filePath,
           smile_score: score,
         })
         .select()

@@ -17,5 +17,5 @@ export interface SmileResult {
   }
   
   export function isSmileDetected(score: number): boolean {
-    return score > 0.3
+    return score >= 0.4
   }
